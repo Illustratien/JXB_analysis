@@ -1,0 +1,57 @@
+date,activity,DFG_year,treatment,stage,amount
+24.10.2019,sowing,DFG2020,Early,,
+13.11.2019,sowing,DFG2020,Late,,
+27.07.2020,harvest,DFG2020,all,,
+25.10.2018,sowing,DFG2019,Early,,
+08.11.2018,sowing,DFG2019,Late,,
+24.07.2019,harvest,DFG2019,all,,
+14.11.2018,fertilization,DFG2019,Split,sowing,20
+02.04.2019,fertilization,DFG2019,all,tillering,40
+24.04.2019,fertilization,DFG2019,176,stem elongation,26
+24.04.2019,fertilization,DFG2019,220,stem elongation,70
+06.06.2019,fertilization,DFG2019,Split,heading,20
+06.06.2019,fertilization,DFG2019,Combined,heading,40
+13.11.2019,fertilization,DFG2020,Split,sowing,20
+24.03.2020,fertilization,DFG2020,all,tillering,50
+09.04.2020,fertilization,DFG2020,176,stem elongation,29
+09.04.2020,fertilization,DFG2020,220,stem elongation,73
+04.06.2020,fertilization,DFG2020,Split,heading,20
+04.06.2020,fertilization,DFG2020,Combined,heading,40
+02.10.2018,Nmin,DFG2019,BS,Before sowing,
+21.03.2019,Nmin,DFG2019,AS,After sowing,
+19.08.2019,Nmin,DFG2019,AH,After harvest,
+02.10.2019,Nmin,DFG2020,BS,Before sowing,
+09.02.2020,Nmin,DFG2020,AS,After sowing,
+27.08.2020,Nmin,DFG2020,AH,After harvest,
+25.02.2020,Biomass,DFG2020,Early,BBCH23,
+17.03.2020,Biomass,DFG2020,Late,BBCH23,
+14.04.2020,Biomass,DFG2020,all,BBCH31,
+25.05.2020,Biomass,DFG2020,all,BBCH41,
+02.06.2020,Biomass,DFG2020,all,BBCH51,
+08.06.2020,Biomass,DFG2020,all,BBCH61,
+23.07.2020,Biomass,DFG2020,all,BBCH87,
+12.03.2019,Biomass,DFG2019,all,BBCH23,
+17.04.2019,Biomass,DFG2019,all,BBCH31,
+27.05.2019,Biomass,DFG2019,all,BBCH41,
+05.06.2019,Biomass,DFG2019,all,BBCH51,
+12.06.2019,Biomass,DFG2019,all,BBCH61,
+23.07.2019,Biomass,DFG2019,all,BBCH87,
+22.10.2020,sowing,DFG2021,Early,,
+05.11.2020,sowing,DFG2021,Late,,
+13.08.2021,harvest,DFG2021,all,,
+28.10.2020,fertilization,DFG2021,Split,sowing,20
+01.03.2021,fertilization,DFG2021,all,tillering,50
+30.04.2021,fertilization,DFG2021,176,stem elongation,48
+30.04.2021,fertilization,DFG2021,220,stem elongation,92
+27.05.2021,fertilization,DFG2021,Split,heading,20
+27.05.2021,fertilization,DFG2021,Combined,heading,40
+02.09.2021,Nmin,DFG2021,BS,Before sowing,
+24.02.2021,Nmin,DFG2021,AS,After sowing,
+18.08.2021,Nmin,DFG2021,AH,After harvest,
+16.03.2021,Biomass,DFG2021,Early,BBCH23,
+16.03.2021,Biomass,DFG2021,Late,BBCH23,
+27.04.2021,Biomass,DFG2021,all,BBCH31,
+31.05.2021,Biomass,DFG2021,all,BBCH41,
+08.06.2021,Biomass,DFG2021,all,BBCH51,
+15.06.2021,Biomass,DFG2021,all,BBCH61,
+27.07.2021,Biomass,DFG2021,all,BBCH87,

@@ -1,0 +1,679 @@
+---
+title: "Data: JXB"
+date: "`r Sys.Date()`"
+chunk_output_type: console
+html-math-method: katex
+number-sections: true
+toc: true
+toc-expand: 3
+toc-depth: 3
+toc-location: left
+crossref:
+  eq-prefix: Eq.
+format:
+ html:
+  embed-resources: true
+---
+
+```{r setup, include=FALSE,echo=F,message=FALSE}
+# knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+pacman::p_load(ggplot2,dplyr,ggridges,tidyr,purrr,lubridate,webr,scales,flextable,kableExtra,ggtern)
+round_scale <- function (vec) 
+{
+    purrr::map_chr(vec, ~{
+        if (is.na(.x) | abs(.x) < 1e-04) {
+            formatC(.x, digits = 1, format = "e")
+        }
+        else if (abs(.x) < 0.001) {
+            as.character(round(.x, 4))
+        }
+        else if (abs(.x) >= 0.001 & abs(.x) < 0.01) {
+            as.character(round(.x, 3))
+        }
+        else if (abs(.x) >= 0.01 & abs(.x) < 1) {
+            as.character(round(.x, 2))
+        }
+        else if (abs(.x) >= 1) {
+            as.character(round(.x, 1))
+        }
+    })
+}
+
+
+view_df<- function (x) {
+  x <- as.data.frame(x)
+  purrr::map_dfr(1:ncol(x), ~{
+    ue <- unique(x[, .x])
+    if (length(ue) < 5) {
+      if (is.numeric(ue)) {
+        ue <- round_scale(ue)
+      }
+      content <- paste(sort(ue), collapse = ",")
+    }
+    else {
+      if (all(is.na(ue))) {
+        content <- "NA"
+      }
+      else if (is.numeric(na.omit(ue)) | all(grepl("^[0-9]+$", 
+                                                   na.omit(ue)))) {
+        ue <- round_scale(ue)
+        if (any(is.na(ue))) {
+          content <- paste0(paste(range(as.numeric(na.omit(ue))), 
+                                  collapse = "~"), " include NA")
+        }
+        else {
+          content <- paste(range(as.numeric(ue)), collapse = "~")
+        }
+      }
+      else {
+        content <- paste0("Levels number:", length(ue))
+      }
+    }
+    data.frame(colnam = names(x)[.x], info = content)
+  })
+}
+
+view_group <- function (dat, g_vec, t_vec = NULL) 
+{
+  if (is.null(t_vec)) {
+    t_vec <- setdiff(names(dat), g_vec)
+  }
+  res <- Reduce(function(x, y) dplyr::left_join(x, y, by = "colnam"), 
+                purrr::map(dplyr::group_split(dplyr::group_by(dplyr::select(dat, 
+                                                                            all_of(c(g_vec, t_vec))), across(all_of(g_vec)))), 
+                           ~{
+                           view_df(.x)
+                           }))
+  res <- data.frame(t(res))
+  names(res) <- res[1, ]
+  res <- res[-1, ]
+  row.names(res) <- NULL
+  return(res)
+}
+
+
+unit<- xlsx::read.xlsx("metadata/Unit.xlsx",sheetIndex = 1) %>% 
+  mutate(unit=case_when(is.na(unit)~" ",
+                        grepl("\\#",unit)~gsub("\\#","Nbr.",unit),
+                        T~unit),
+         
+         xlabel=case_when(unit==" "~trait,
+                          T~paste0(trait,"\n(",unit,")")))
+
+complete_dat <- read.csv2("output/BRIWECS_data_publication.csv") %>% 
+  mutate(across(c(Sowing_date,BBCH59:Protein_yield),as.numeric),
+         Environment = paste(Location, Year, sep = "_")) %>% 
+  tidyr::separate(Treatment,into=c("Nitrogen","Fungicide","Water_availability"))
+
+long <- complete_dat%>% 
+  tidyr::pivot_longer(BBCH59:Protein_yield,
+                      names_to="trait",values_to = "Trait") %>% 
+  filter(!is.na(Trait)) 
+trt.col <- c("#46A120","#004400","#D4D46A","#F1EB00")
+names(trt.col) <- c("HN.NF","HN.WF","LN.NF","LN.WF")
+traittbl <- long %>%
+  left_join(unit ,by='trait')%>%
+  view_group(.,"trait",c('Full.name',"sample.source","Trait","unit")) %>% 
+  arrange(sample.source,trait) %>% 
+  relocate(Full.name,sample.source) %>% 
+  mutate(sample.source=gsub("biomass ","",sample.source)) %>% 
+  rename("trait full name"="Full.name","column name"="trait",
+         "trait source"="sample.source","trait range"="Trait") 
+
+illu  <-  complete_dat %>% 
+  group_by(BRISONr, Environment) %>% 
+  summarize(across(c(Sowing_date,BBCH59:Protein_yield),function(x) mean(x, na.rm = TRUE))) %>% 
+  ungroup() %>% 
+  mutate_all(~ifelse(is.nan(.), NA, .)) 
+
+tr.vec <- c("Seedyield","Seedyield_bio","Biomass_bio",
+            "Harvest_Index_bio","TGW","TGW_bio","Spike_number_bio","Plantheight_bio")
+phen.vec <- c("Emergence_date","BBCH59","BBCH87")
+path.vec <- c("Stripe_rust","Powdery_mildew","Leaf_rust","Septoria","DTR","Fusarium")
+yq.vec <- c("Sedimentation","Falling_number","Crude_protein","Protein_yield")
+section_nam<- list("Agronomic traits","Yield quality","Phenology","Pathogens")
+tr_list <- list(tr.vec,yq.vec,phen.vec,path.vec)
+
+distri_plot<- function(complete_dat,tr){
+  ggplot(complete_dat) +
+    aes(x = .data[[tr]], y = Environment, fill = interaction(Nitrogen,Fungicide)) +
+    theme_classic() +
+    ggh4x::facet_nested(~Water_availability,nest_line = TRUE)+
+    theme(legend.position = "bottom",strip.background = element_blank()) +
+    geom_density_ridges(   
+      alpha = 0.75,
+      jittered_points = TRUE,
+      position = "raincloud",
+      point_size = 0.05,
+      point_alpha = 0.2,
+      scale=.8) +
+    scale_fill_manual(values=trt.col) +
+    scale_y_discrete(drop=FALSE) +
+    xlab(with(unit,xlabel[match(tr,trait)]))+
+    ylab("Location x Year")
+}
+cor_plot <- function(illu,tr){
+  illu_cor <- illu%>% 
+    dplyr::select(all_of(c(tr,"Environment","BRISONr"))) %>% 
+    tidyr::pivot_wider(names_from = Environment, values_from = tr) %>%
+    dplyr::select(-BRISONr) %>%
+    dplyr::select(order(colnames(.))) %>% 
+    cor(., use = "pairwise.complete.obs")
+  ggcorrplot::ggcorrplot(illu_cor) +
+    ggtitle(tr) +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45,hjust=1.2,vjust=1.2)) +
+    paletteer::scale_fill_paletteer_c(palette = "scico::bam", limits = c(-1, 1)) +
+    xlab("") +
+    ylab("")
+}
+
+#weather_import
+weather_dat <- list.files(path = "data/weather",
+                          pattern="*.csv",
+                          full.names = T) %>%
+  purrr::map_df(~read.csv2(.)) %>% 
+  mutate(Date=lubridate::as_date(Date))
+
+#weather_transform
+season_join <- tidyr::expand_grid(Year = 2015:2020,
+                                  Date = seq(from = lubridate::as_date("2014-09-01"),
+                                             to = lubridate::as_date("2015-08-31"), by = 1)) %>% 
+  mutate(Month = lubridate::month(Date),
+         Date = ifelse(Month <= 8, `year<-`(Date, Year), `year<-`(Date, Year - 1)),
+         Date = as_date(Date)) %>% 
+  dplyr::select(-Month)
+
+sowing_date <- complete_dat %>% 
+  dplyr::select(Location, Year, Sowing_date) %>% 
+  mutate(Date = as_date(paste(Year - 1, "01", "01", sep = "-")),
+         Sowing_date = Date + Sowing_date) %>% 
+  dplyr::select(Location, Year, Sowing_date) %>% 
+  group_by(Location, Year) %>% 
+  summarize(Sowing_date = mean(Sowing_date, na.rm = TRUE)) %>% 
+  suppressMessages() %>% 
+  ungroup()
+
+weather_dat <- weather_dat %>% 
+  left_join(season_join,"Date") %>% 
+  left_join(sowing_date,by=c("Location","Year")) %>% 
+  mutate(Month = month(Date)) %>% 
+  filter(!is.na(Sowing_date),
+         Month != 7,
+         Month != 8,
+         Date > Sowing_date)
+
+pacman::p_load(dplyr,VennDiagram,purrr,readr,scales)
+df <- read.csv("metadata/BRIWECs_cultivar_info.csv")
+colr <- c('#188392','#EEAE24','#EE3324')
+
+colra <- map_chr(colr,~alpha(.x,.3))
+
+p <- venn.diagram(
+  x = list(
+    df %>% filter(breeding_progress==T) %>% .$BRISONr%>%  unique(), 
+    df %>% filter(phaseI==T) %>% .$BRISONr%>%  unique(),
+    df %>% filter(phaseII==T) %>%.$BRISONr %>%  unique()),
+  category.names = c( "breeding\nprogress" ,"PhaseI","PhaseII"),
+  filename = 'figure/culitvar_venn.png',
+  output = TRUE ,
+  imagetype="png" ,
+  height = 600 , 
+  width =  600 , 
+  resolution = 660,
+  compression = "lzw",
+  lwd = 1,
+  col=colr,
+  fill = colra,
+  cex = 0.5,
+  fontfamily = "sans",
+  cat.cex = 0.3,
+  cat.default.pos = "outer",
+  # cat.pos = c(-27, 27, 135),
+  # cat.dist = c(0.055, 0.055, 0.085),
+  cat.fontfamily = "sans",
+  cat.col = colr
+)
+```
+
+
+
+## Hightlights
+
+::: callout-tip
+```{r data_summary, warning=FALSE,echo=FALSE, message=FALSE}
+#| output: asis
+cat(
+  sprintf(
+    "## %s traits from 8 genotypes across 3 years, 1 locations and 8 managements",nrow(long)),
+  sep = "\n"
+) 
+```
+:::
+
+::: panel-tabset
+## smaall field dataset
+
+```{r,warning=FALSE,echo=FALSE, message=FALSE}
+#| label: fig-pie
+first.ring <- c("Genotype","Locations","Year","Management") 
+second.ring <- list(c("8\nwinter wheat\ncultivars"," "," "),
+                    c("1\nGerman\nlocations","soil properties","experimental\ndesigns"),
+                    c(" ","climatic\ndata","sowing\ndate"),
+                    c("fungicide\napplication","water\navailability","nitrogen\nfertilization"))
+repid <- purrr::map_dbl(second.ring,~{
+  length(.x)
+})
+pheno <- purrr::map2(first.ring,repid,~{
+  rep(.x,each=.y)
+}) %>% unlist()
+
+tr <- "overview"
+
+td <- data.frame(phenotype=pheno,factor1=second.ring %>% unlist()) %>% 
+  group_by(phenotype) %>% 
+  mutate(n=n()) %>% ungroup()
+
+PieDonut(td, aes(phenotype, factor1, count=n),
+         explode = c(1,2,3,4),r0 = .5,
+         addDonutLabel = TRUE,
+         showRatioDonut = F, labelposition = 0.2,
+         showRatioPie = F)
+```
+
+
+## 8 Managements
+
+Management comprises of three treatments: total nitrogen, application time and water availability.
+
+-   Nitrogen fertilizer treatment includes two application levels: high (HN: 220 kg N ha^-1^) and low (LN: 110 kg N ha^-1^), both include soil mineral nitrogen (0–90 cm) measured in early spring.
+
+-   application time  contains two application levels: split (S) or combined (C).
+
+-   sowing date has two levels: early (E) and late (L)
+
+In total, there are 9 managements, while it is incomplete and depends on the location and years (@fig-managements, @tbl-managements).
+
+```{r managements, echo=FALSE,warnings=F}
+#| output: asis
+
+```
+
+## 24 agronomic and physiological traits
+
+```{r number_of_observations, echo=FALSE, warning=FALSE}
+#| output: asis
+#| 
+cat(
+  sprintf("Total: %sK observations (removed outliers)", format(round(nrow(long)/1000, 1), dec=",")),
+  sep = "\n"
+) 
+
+fig2 <- 
+  suppressWarnings(
+  long %>%left_join(unit,"trait")%>% 
+  group_by(trait,sample.source) %>% summarise(n=n(),.groups = "drop") %>% 
+  group_by(sample.source) %>% 
+  mutate(trait = forcats::fct_reorder(trait, n)) %>%
+  ggplot( aes(x=trait, y=n)) +
+  geom_segment( aes(xend=trait, yend=0)) +
+  geom_point( size=4, color="orange") +
+  coord_flip() +
+  ggh4x::facet_nested(sample.source~.,
+                      nest_line=T, 
+                      switch = "y",# place strip to bottom
+                      scales = "free_y",space ="free_y"
+                      # independent = "y"
+  )+
+  ggtitle(sprintf("total number of observation: %s",nrow(long)))+
+  xlab("")+ylab("number of observations")+
+  ggrepel::geom_text_repel(aes(label=n),
+                           size=2.7,
+                           hjust=0,
+                           box.padding = -.1,
+                           point.padding = 0,
+                           nudge_y=0,
+                           # nudge_x=0,
+                           direction="x"
+  )+
+  scale_y_continuous(
+    labels =label_number(scale_cut = cut_short_scale()),
+    limits=c(0,37000)
+  )+
+  ggplot2::theme_test() +
+  ggplot2::theme(axis.text.x = element_text(size = 9, 
+                                            vjust = -1), 
+                 axis.text.y = element_text(size = 9, 
+                                            margin = margin(r = 4)),
+                 axis.title = element_text(size = 9.2, face = "bold"), 
+                 axis.title.y = element_text(margin = margin(r = 15), 
+                                             vjust = -1),
+                 axis.title.x = element_text(margin = margin(b = 3), 
+                                             vjust = -4), 
+                 axis.ticks = element_line(size = 0.6, color = "black"), 
+                 axis.ticks.length = unit(0.2, "cm"), 
+                 strip.text.x = element_text(size = 8, face = "bold"), 
+                 strip.text.y = element_text(size = 8, 
+                                             face = "bold"),
+                 strip.background = element_blank(), 
+                 panel.border = element_rect(colour = ifelse(is.null(frame), 
+                                                             NA, "black"), 
+                                             fill = NA, size = 0.6), 
+                 axis.line = element_line(colour = "black", size = 0.6), 
+                 legend.title = element_text(size = 8, face = "bold"), 
+                 legend.text = element_text(size = 8,                                                                            face = "bold"), 
+                 plot.margin = margin(t = 15, r = 10, 
+                                      b = 10, l = 1, unit = "pt"), 
+                 legend.background = element_rect(fill = NA), 
+                 plot.background = element_rect(fill = "transparent"),
+                 plot.title = element_text(size=10),
+                 strip.placement = "outside"))
+
+cat(sep = "\n", knitr::knit_child(quiet = TRUE, text = c(
+  "```{r}",
+  "#| echo: false",
+  sprintf("#| fig-cap: %s-datapoint", tr),
+  sprintf("#| label: fig-%s-datapoint", tr),
+  "suppressWarnings(suppressMessages(print(fig2)))",
+  "```"
+)))  
+```
+:::
+
+## Experimental designs
+
+::: panel-tabset
+```{r experimental_design,echo=FALSE,warning=FALSE,message=FALSE}
+#| output: asis
+
+data <- read.csv2("output/BRIWECS_data_publication.csv") %>% 
+  mutate(across(BBCH59:Protein_yield,as.numeric),
+         phase=case_when(Year<2018~"Phase I",
+                         T~"Phase II") %>%
+           factor(.,levels=c("Phase II","Phase I"))) %>% 
+  tidyr::pivot_longer(BBCH59:Protein_yield,names_to = "trait",values_to = "Trait")
+data_list <- data %>% 
+  group_by(Year) %>% 
+  group_split() %>% 
+  .[!map_lgl(.,~{all(is.na(.x$Trait))})] %>% 
+  .[!map_lgl(.,~{length(which(!is.na(.x$Trait)))==1})] %>% 
+  map(.,~{
+    .x %>% 
+      select(Year,Location,Treatment,Row,Column,phase) %>% 
+      distinct() %>% 
+      tidyr::separate(Treatment,into=c("Nitrogen","Fungicide","Water_availability")) %>% 
+      suppressWarnings() %>% 
+      mutate(across(c(Row,Column),as.integer)) %>% 
+      dplyr::filter(!is.na(Row),!is.na(Column))
+  })
+
+plot_fun<- function(i){
+  df <- data_list[[i]]
+  df%>%
+    ggplot(aes(Row,Column,color=interaction(Nitrogen,Fungicide)))+
+    geom_point(size=.8)+
+    scale_shape_manual(values=c(1,16))+
+    theme_classic()+
+    theme(legend.position="bottom",
+          axis.text.x=element_blank(),
+          axis.ticks.x = element_blank(),
+          strip.text=element_text(size=8),
+          
+          strip.background = element_blank())+
+    # scale_color_brewer(palette = "Set1") +
+    scale_color_manual(values=trt.col)+
+    ggh4x::facet_nested(phase+Year~Water_availability+Location,nest_line = T,
+                        scales="free_x",
+                        space = "free_x",
+                        switch = "y"
+    )+
+    guides(color = guide_legend(override.aes = list(size = 5))) 
+}
+
+for(i in 1:length(data_list)){ #
+  tr <- data_list[[i]]$Year[1]
+  cat(
+    sprintf(
+      "### `%s` ",tr),
+    sep = "\n"
+  ) 
+  expp <- plot_fun(i)
+  cat(sep = "\n", knitr::knit_child(quiet = TRUE, text = c(
+    "```{r}",
+    "#| echo: false",
+    sprintf("#| fig-cap: %s-exp", tr),
+    sprintf("#| label: fig-%s-ep", tr),
+    "#| fig.asp: .8",
+    "suppressWarnings(suppressMessages(print(expp)))",
+    "```"
+  )))
+}
+```
+:::
+
+## 24 Traits
+
+```{r,echo=F}
+#| tbl-cap: "Trait names, sources, ranges and units" 
+#| label: tbl-trait-range-table
+traittbl%>%
+  kbl() %>%
+  kable_classic_2(full_width = F, position = "float_right")
+```
+
+## Ranges of traits
+
+```{r range_of_traits, warning=FALSE, message=FALSE}
+#| echo: false
+#| output: asis
+for (i in 1:length(section_nam)) { #
+  cat(
+    sprintf("### %s",section_nam[[i]]),
+    sep='\n')
+  
+  trvec <-  tr_list[[i]] 
+  for (tr in trvec) {
+    cat(
+      sprintf(
+        "#### `%s` ",tr),
+      sep = "\n"
+    ) 
+    dp <- distri_plot(complete_dat,tr) %>% suppressWarnings() %>% suppressMessages()
+    if(tr=="Emergence_date"){
+      dp <- dp+xlab("days of year")
+    }
+    cat(sep = "\n", knitr::knit_child(quiet = TRUE, text = c(
+      "```{r}",
+      "#| echo: false",
+      sprintf("#| fig-cap: %s-distribution", tr),
+      sprintf("#| label: fig-%s-dp", tr),
+      "#| fig.asp: 1.2",
+      "suppressWarnings(suppressMessages(print(dp)))",
+      "```"
+    )))
+    
+    if(!tr%in%c("Emergence_date",path.vec)){
+      cp <- cor_plot(illu,tr) %>%  suppressWarnings() %>% suppressMessages()
+      cat(sep = "\n", knitr::knit_child(quiet = TRUE, text = c(
+        "```{r}",
+        "#| echo: false",
+        sprintf("#| fig-cap: %s-correlation", tr),
+        sprintf("#| label: fig-%s-cp", tr),
+        "#| fig.asp: 1.2",
+        "cp",
+        "```"
+      )))
+    }
+    if (tr=="Seedyield_bio"){
+      cpp <-  suppressMessages(
+        ggplot(illu) + 
+          aes(x = Seedyield*10, y = Seedyield_bio) + 
+          ggtitle("Comparison Combine Harvest and Hand Harvest") +
+          facet_wrap(~Environment, ncol = 5) +
+          theme_minimal() +
+          geom_abline(intercept = 0, slope = 1) +
+          geom_point(shape = 21, colour = "white", fill = "grey40", stroke = 0.2) +
+          geom_smooth(method = "lm", se = FALSE, colour = "orangered2") +
+          ggpmisc::stat_poly_eq(aes(label =  paste(..rr.label.., sep = "~~~~")), 
+                                parse = TRUE, geom = "text_npc", formula = y~x, size = 4) +
+          coord_equal()+
+          xlab("Seedyield")+
+          NULL
+      )
+      cat(sep = "\n", knitr::knit_child(quiet = TRUE, text = c(
+        "```{r}",
+        "#| echo: false",
+        sprintf("#| fig-cap: correlations between whole plot and 50 cm cut", tr),
+        sprintf("#| label: fig-%s-cpp", tr),
+        "#| fig.asp: 1.6",
+        "suppressWarnings(suppressMessages(print(cpp)))",
+        "```"
+      )))
+    }
+  }
+}
+```
+
+```{r range_of_traits_2,echo=FALSE,warning=FALSE,message=FALSE}
+#| output: asis
+tr <- "Sowing_date"
+cat(
+  sprintf(
+    "### %s ", tr),sep="\n")
+
+dp <-ggplot(complete_dat) +
+  aes(x = Sowing_date, y = Environment, fill = interaction(Nitrogen,Fungicide)) +
+  theme_classic() +
+  theme(legend.position = "bottom") +
+  geom_density_ridges(alpha = 0.75,
+                      jittered_points = TRUE,
+                      position = "raincloud",
+                      point_size = 0.05,
+                      point_alpha = 0.2,
+                      scale = 0) +
+  scale_fill_manual(values=trt.col) +
+  scale_x_continuous(limits = c(250, 350))+
+  xlab("days of years") 
+
+cat(sep = "\n", knitr::knit_child(quiet = TRUE, text = c(
+  "```{r}",
+  "#| echo: false",
+  sprintf("#| fig-cap: %s-distribution", tr),
+  sprintf("#| label: fig-%s-dp", tr),
+  "#| fig.asp: 1.2",
+  "suppressWarnings(suppressMessages(print(dp)))",
+  "```"
+)))
+```
+
+## Climate data
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+#| label: fig-precipitation
+#Cumulated_Weather_Precipitation
+wsub <- weather_dat %>% 
+  filter(Month < 8,
+         Month > 2) %>% 
+  group_by(Location, Year) %>% 
+  arrange(Date) %>% 
+  mutate(Precipitation.Cumsum_mm_d = cumsum(Precipitation_mm_d),
+         Date_max = max(Date)) %>% 
+  ungroup() %>% 
+  mutate(Date_Fake = ifelse(Month <= 8, `year<-`(Date, 2015), `year<-`(Date, 2014)),
+         Date_Fake = as_date(Date_Fake),
+         Environment = paste(Location, Year, sep = "_"),
+         label = ifelse(Date == Date_max, Environment, NA)) %>% 
+  group_by(Date_Fake) %>% 
+  mutate(Precipitation.Cumsum.Mean_mm_d = mean(Precipitation.Cumsum_mm_d, na.rm = TRUE)) %>% 
+  ungroup()
+
+plot_1 <- wsub %>% 
+  select(Date_Fake,Environment,
+         label,Precipitation.Cumsum_mm_d,Precipitation.Cumsum.Mean_mm_d) %>% 
+  # filter(!is.na(Precipitation.Cumsum_mm_d),
+  #        !is.na(Precipitation.Cumsum.Mean_mm_d)) %>% 
+  ggplot() + 
+  aes(x = Date_Fake,
+      y = Precipitation.Cumsum_mm_d - Precipitation.Cumsum.Mean_mm_d, 
+      colour = Environment) +
+  ggtitle("March to harvest") +
+  theme_classic() +
+  theme(plot.margin = margin(0.1, 3, 0.1, 0.1, "cm")) +
+  geom_hline(yintercept = 0, colour = "grey", size = 2) +
+  geom_line() +
+  ggrepel::geom_text_repel(aes(label = label),
+                           direction = "y",
+                           hjust = 0,
+                           size = 3,
+                           segment.alpha = .5,
+                           nudge_x = 10,
+                           segment.linetype = "dotted",
+                           xlim = c(-Inf, Inf),
+                           max.overlaps = 20) +
+  labs(x = "Date",
+       y = quote(Precipitation[Cumsum]~Mean~Deviation~~'['*mm*']')) +
+  scale_colour_viridis_d(option = "turbo") +
+  guides(colour = "none") +
+  # scale_x_date(limits = c(ymd("2014-06-30"), ymd("2015-06-30"))) +
+  coord_cartesian(
+    xlim = c(ymd("2015-03-01"), ymd("2015-06-30")),
+    ylim = c(-200, 200),
+    clip = "off",
+    expand = 0
+  ) 
+
+plot_1%>% suppressWarnings()
+
+```
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+#| label: fig-globalrad
+#Cumulated_Weather_GlobRad
+wsub <- weather_dat %>% 
+  filter(Month < 8,
+         Month > 2) %>% 
+  group_by(Location, Year) %>% 
+  arrange(Date) %>% 
+  mutate(Global.Radiation.CumSum_MJ_m2_d = cumsum(Global.Radiation_MJ_m2_d),
+         Date_max = max(Date)) %>% 
+  ungroup() %>% 
+  mutate(Date_Fake = ifelse(Month <= 8, `year<-`(Date, 2015), `year<-`(Date, 2014)),
+         Date_Fake = as_date(Date_Fake),
+         Environment = paste(Location, Year, sep = "_"),
+         label = ifelse(Date == Date_max, Environment, NA)) %>% 
+  group_by(Date_Fake) %>% 
+  mutate(Global.Radiation.CumSum.Mean_MJ_m2_d = mean(Global.Radiation.CumSum_MJ_m2_d, na.rm = TRUE)) %>% 
+  ungroup()
+
+plot_1 <- 
+  ggplot(wsub) + 
+  aes(x = Date_Fake,
+      y = Global.Radiation.CumSum_MJ_m2_d - Global.Radiation.CumSum.Mean_MJ_m2_d,
+      colour = Environment) +
+  ggtitle("March to harvest") +
+  theme_classic() +
+  theme(plot.margin = margin(0.1, 3, 0.1, 0.1, "cm")) +
+  geom_hline(yintercept = 0, colour = "grey", size = 2) +
+  geom_line() +
+  ggrepel::geom_text_repel(aes(label = label),
+                           direction = "y",
+                           hjust = 0,
+                           size = 3,
+                           segment.alpha = .5,
+                           nudge_x = 10,
+                           segment.linetype = "dotted",
+                           xlim = c(-Inf, Inf),
+                           max.overlaps = 20) +
+  labs(x = "Date",
+       y = quote(Global~Radiation[Cumsum]~Mean~Deviation~~'['*MJ%.%m^-2*']')) +
+  scale_colour_viridis_d(option = "turbo") +
+  guides(colour = FALSE) +
+  coord_cartesian(
+    xlim = c(ymd("2015-03-01"), ymd("2015-06-30")),
+    ylim = c(-280, 280),
+    clip = "off",
+    expand = 0
+  ) 
+
+plot_1 %>% suppressWarnings()
+```

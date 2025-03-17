@@ -1,0 +1,64 @@
+full,trait,unit,Unit,abs
+biomass,biomass,(t / ha),t/ha,DM
+grain yield,yield,(t / ha),t/ha,GY
+total nitrogen content,total_N,(t / ha),t/ha,N
+total water soluble carbohydrate content,total_C,(t / ha),t/ha,WSC
+thosand grain weight,tkw,(g/ 1000 grain),g/1000 grain,TGW
+nitrogen concentration per dry matter,Nitrogen,(mg / g biomass),mg/g,[N]
+water soluble carbohydrate concentration per dry matter,CHO,(mg / g biomass),mg/g,[WSC]
+tiller number per area,tiller,*10^{6}/ha,10^6/ha, 
+grain number per area,grain_number,*10^{6}/ha,10^6/ha,GN
+grain per spike per area,grain_per_spike,*10^{6}/ha,10^6/ha,GpS
+spike number per area,spike_number,*10^{6}/ha,10^6/ha,SN
+light interception,LI,%,, 
+green canopy duration,GCD, (degCd),degCd,GCD
+SPAD,SPAD, ,, 
+leaf area index,LAI, ,,
+grain area,grain_area,mm^{2},mm^2,
+grain width,grain_width,(mm),mm,GW
+grain length,grain_length,(mm),mm,GL
+grain circularity,grain_circularity, ,,
+grain length to width ratio,grain_LB_ratio, ,,
+grain bulk density,grain_bulk_density,(kg/hl),kg/hl,
+leaf area duration,LAD,,,
+contribution of pre-anthesis dry matter to ear,CEDM,,,
+thermal time to flowering,TT59, (degCd),,
+contribution of pre-anthesis nitrogen to ear,CEN,,,
+crop growth rate per day,CGR_dd,t /(d*ha),,
+crop growth rate per thermal sum,CGR_tt,t /(degCd*ha),,
+changes in total biomass,Delta_biomass,(t/ha),t/ha,
+changes in ear biomass,Delta_ear,(t/ha),t/ha,
+drymatter translocation efficiency,DMTE, ,,
+E,E, ,,
+ear growth rate per day,EGR_dd,t /(d*ha),,
+ear growth rate per thermal sum,EGR_tt,t /(degCd*ha),,
+fruiting efficiency,FE,(#Nr/g),,
+green canopy area,GBD,%,%,GCA
+plant height,Height,(cm),cm,
+harvest index,HI, ,,
+mobile dry matter at anthesis,mobile61_DM,(t/ha),t/ha,
+relative mobile dry matter at anthesis,mobile61_DM_rel,%,%,
+mobile nitrogen at anthesis,mobile61_N,(t/ha),t/ha,
+relative mobile nitrogen at anthesis,mobile61_N_rel,%,%,
+mobile wsc at anthesis,mobile61_WSC,(t/ha),t/ha,
+nitrogen translocation efficiency,NTE, ,,
+pre-anthesis dry matter ratio,PEDM, ,,
+pre-anthesis nitrogen ratio,PEN, ,,
+post-anthesis dry matter at anthesis,post61_DM,(t/ha),t/ha,
+relative post-anthesis  dry matter at anthesis,post61_DM_rel,%,%,
+post-anthesis nitrogen at anthesis,post61_N,(t/ha),t/ha,
+relative post-anthesis  nitrogen at anthesis,post61_N_rel,%,%,
+pre-anthesis dry matter at anthesis,pre61_DM,(t/ha),t/ha,
+relative pre-anthesis  dry matter at anthesis,pre61_DM_rel,%,%,
+pre-anthesis nitrogen at anthesis,pre61_N,(t/ha),t/ha,
+relative pre-anthesis  nitrogen at anthesis,pre61_N_rel,%,%,
+wsc translocation efficiency,WSCTE,,,
+accumulated radiation,Acc_Radiation,MJ,MJ,
+daily radiation,DailySum_Radiation,J,J,
+thermal quotient,TQ,J/degCd,J/degCd,
+accumulated thermal quotient,Acc_TQ,MJ/degCd,MJ/degCd,
+BBCH stage,BBCH,,,
+BBCH phase,BBCH phase,,,
+,,,,
+,,,,
+ ,,,,
