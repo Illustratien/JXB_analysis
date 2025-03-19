@@ -156,7 +156,7 @@ qp4<- function(datta,xy_vec){
 }
 
 
-tiff(filename='result/Fig3_post.tiff',
+tiff(filename='result/Fig.3.tiff',
      units="cm",
      width=21,#21.6
      height=18,#16.1

@@ -17,7 +17,7 @@ para_vec <- c("plot_grain_number",
           'gSPAD_61',"GCD61","straw_CHO87"
  )
 
-tiff(filename='result/Fig6.tiff',
+tiff(filename='result/Fig.6.tiff',
      units="cm",
      width=21,#21.6
      height=15,#16.1
@@ -27,10 +27,9 @@ tiff(filename='result/Fig6.tiff',
      family="Arial")
 source("src/fun/pca_fun.R")
 pca.check(para_vec)
-
 dev.off()
 
-tiff(filename='result/Fig7.tiff',
+tiff(filename='result/Fig.7.tiff',
      units="cm",
      width=21,#21.6
      height=15,#16.1
