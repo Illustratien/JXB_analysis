@@ -80,3 +80,80 @@ resdf <- res %>%
   map_dfr(.,~{.x})
 
 write.csv(resdf,"result/HSDtable.csv",row.names = F)
+
+# -------------------------------------------------------------------------
+
+rm(list=ls())
+pacman::p_load(dplyr,purrr,ggplot2,magrittr,foreach,toolPhD)
+options(dplyr.summarise.inform = FALSE)
+
+# -------------------------------------------------------------------------
+periodic <- read.csv(file = "data/periodic_BBCH_thermaltime_rep.csv") %>% 
+  rename("BBCH"="B",trait=Climate)
+bbc <- read.csv("data/BBCH_thermaltime_rep.csv")%>% 
+  dplyr::select(Year,var,rep,nitrogen,appl,timeid,BBCH,any_of(starts_with("Acc"))) %>% 
+  tidyr::pivot_longer(starts_with("Acc"),names_to="trait",values_to ="value") %>% 
+  mutate(BBCH=as.character(BBCH))
+GCD <-read.csv("data/GCD_merge_rep.csv") %>% 
+  dplyr::select(DFG_year:S,any_of(ends_with("61")),GCD87) %>% 
+  tidyr::pivot_longer(GLA50:GCD87,names_to = "trait",values_to = "Trait") %>% 
+  mutate(DFG_year=gsub("DFG","",DFG_year) %>% as.numeric(),
+         BBCH="")
+
+n.cores <- parallel::detectCores() - 1
+#create the cluster
+my.cluster <- parallel::makeCluster(
+  n.cores,
+  type = "PSOCK"
+)
+
+doParallel::registerDoParallel(cl = my.cluster)
+data_list <- bind_rows(periodic,bbc) %>%
+  rename(DFG_year=Year,Trait=value) %>%
+  bind_rows(.,GCD) %>%
+  tidyr::unite("namCombine",c(trait,BBCH),sep="-") %>%
+  group_by(DFG_year,namCombine) %>%
+  group_split()
+#
+sssp_table_ls <- foreach(
+  i  = 1:length(data_list),
+  df = data_list,
+  .packages = c('dplyr','agricolae','tibble','purrr')
+) %dopar% {
+  source('src/fun/sssp_anova.R')
+  dff <- tryCatch({
+    aov_tb(df)},
+    error=function(cond) {
+      print(i)
+      print(cond)
+    }
+  )
+  dff
+} %>% Reduce("rbind",.)
+# # -------------------------------------------------------------------------
+system.time(
+  res <- foreach(
+    i  = 1:length(data_list),
+    df = data_list,
+    .packages = c('dplyr','agricolae','tibble','purrr')
+  ) %dopar% {
+    dff <- tryCatch(
+      {hsd_tb(df) %>%
+          mutate(trait=df$namCombine[1])},
+      error=function(cond) {
+        print(i)
+        print(cond)
+        return(NULL)
+      })
+    return(dff)
+  }
+)
+
+parallel::stopCluster(my.cluster)
+
+resdf <- res %>%
+  .[!map_lgl(.,~{is.null(.x)})] %>%
+  map_dfr(.,~{.x}) %>%
+  tidyr::separate(trait,c("trait","BBCH"),sep="-")
+
+write.csv(resdf,"result/HSDtable_phenology_gcd.csv",row.names = F)
