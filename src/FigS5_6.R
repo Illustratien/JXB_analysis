@@ -5,10 +5,10 @@ pacman::p_load(dplyr,purrr,ggplot2,stickylabeller,ggh4x,
 options(dplyr.summarise.inform = FALSE)
 # -------------------------------------------------------------------------
 
-hsd_tbl <- read.csv("result/Table/sssp/HSDtable.csv") %>% 
+hsd_tbl <- read.csv("result/HSDtable.csv") %>% 
   dplyr::select(groups,trait,treatment,Year,combi) %>% 
   rename(trait_name=trait,DFG_year=Year)
-resdf <- read.csv("result/Table/sssp/HSDtable_phenology_gcd.csv") %>% 
+resdf <- read.csv("result/HSDtable_phenology_gcd.csv") %>% 
   dplyr::select(groups,trait,treatment,Year,combi,BBCH) %>% 
   mutate(
     BBCH=gsub("\\\n","-",BBCH),
@@ -33,9 +33,9 @@ resdf <- read.csv("result/Table/sssp/HSDtable_phenology_gcd.csv") %>%
 hsd_tbl <- bind_rows(hsd_tbl,resdf) %>% distinct()
 
 # -------------------------------------------------------------------------
-periodic <- read.csv(file = "result/Climate/periodic_BBCH_thermaltime.csv") %>% 
+periodic <- read.csv(file = "data/periodic_BBCH_thermaltime.csv") %>% 
   rename("BBCH"="B",trait=Climate)
-bbc <- read.csv("result/Climate/cumulative_BBCH_thermaltime.csv")%>% 
+bbc <- read.csv("data/cumulative_BBCH_thermaltime.csv")%>% 
   dplyr::select(Year,var,nitrogen,appl,timeid,BBCH,any_of(starts_with("Acc"))) %>% 
   tidyr::pivot_longer(starts_with("Acc"),names_to="trait",values_to ="value") %>% 
   mutate(BBCH=as.character(BBCH))
@@ -74,9 +74,6 @@ merge_dat <- read.csv("data/merge_profile.csv") %>%
   mutate(trait_name=namCombine,
          g=paste(nitrogen,appl,timeid,sep="_"),
          Year=gsub("DFG","",DFG_year) %>% factor()) %>% distinct()
-# %>% 
-# select(-namCombine)
-
 
 # -------------------------------------------------------------------------
 
@@ -94,8 +91,6 @@ g_rank <- genotypic_superiority_measure(y,'Trait',genotype = 'var',
 col_pal <- scales::hue_pal()(3)
 names(col_pal) <- as.character(2019:2021)
 source("src/fun/M_fun.R")
-
-# uni <- read.csv("data/unit.csv")
 
 # -------------------------------------------------------------------------
 plot_trait<- function(tv,ltb){
@@ -138,7 +133,6 @@ plot_trait<- function(tv,ltb){
     scale_color_manual(values = col_pal)+
     theme( 
       axis.text.x = element_text(size=10,angle=90),
-      # ggtext element_markdown(), ... failed
       axis.text.y = element_text(size=10,# colour =color.vec
       ),
       axis.title.x=element_blank(),
@@ -152,154 +146,7 @@ plot_trait<- function(tv,ltb){
     coord_flip()
 }
 
-# individual input -------------------------------------------------------------------------
-# tv <- c("plot_yield","plot_grain_number",
-#         "plot_tkw","plot_grain_per_spike",
-#         "spike_number_87","straw_DM87")
-# 
-# ltb <- data.frame(namCombine=tv,
-#                   nam=c('GY','GN','TGW','GpS','SN','Straw'),
-#                   letters =LETTERS[1:6],
-#                   unit= c("t~ha^-1",'x10^6~ha^-1',
-#                           'g/1000~grain','x10^6~ha^-1~spike^-1',
-#                           'x10^6~ha^-1',"t~ha^-1"))
-toolPhD::df_ue(merge_dat,"trait_name","g")
-
-# quality -------------------------------------------------------------------------
-
-
-# toolPhD::df_ue(merge_dat,"namCombine","LAI")
-tv <- c( 
-  # "straw_CHO61","straw_CHO87","mobile61_WSC",
-  # "S61_87",
-  # "SN_T61","T61_T87",
-  "S", "GCD61",
-"S31_41",
- "S61_71","S71_77", "S61_87",
-  "TT61"
-  # ,"TT87"
-)
-# tv <- c(
-#   # "grain_area",
-#   # "grain_bulk_density",
-#         # "kernel_Nitrogen87",
-#         # "kernel_total_N87",
-#   # "straw_CHO87" ,"mobile61_WSC",
-#   # "TT61",  "TT87",
-#   "Height_61","Height_83","S31_41","S31_61",
-#       # "S","GCD61",
-#   "height_61"
-#   # "straw_CHO61","straw_DM61","ear_DM61"  
-#         )
-
-ltb <- data.frame(namCombine=tv,
-                  # nam=tv %>% gsub("\\_","~",.),
-                  nam=c('GCD.S','GCD',
-                        'TT[31-41]',
-                        'TT[61-71]',
-                         'TT[71-77]','TT[61-87]',
-                        'TT61'),
-                  unit=c("",'d*degree*C','d*degree*C', 'd*degree*C', 
-                                'd*degree*C', 'd*degree*C', 'd*degree*C'#kg/t
-                                ),
-                  # unit=NA,
-                  letters =LETTERS[1:length(tv)])
-
-tiff(filename=paste0("paper_fig/FigS6.tiff"),
-     units="cm",
-     width=21,
-     height=14,
-     compression = "lzw",
-     pointsize=3,
-     res=600)# dpi
-plot_trait(tv,ltb) %>% print()
-dev.off()
-
-
-
-# 61 trait ----------------------------------------------------------------
-
-
-toolPhD::df_ue(merge_dat,"namCombine","LAI")
-
-tv <- c("GCD61", "LAImax61",
-        "straw_CHO61",
-        "tiller_61","straw_CHO87" ,"Height_61")
-
-ltb <- data.frame(namCombine=tv,
-                  nam=tv,unit=NA,
-                  letters =LETTERS[1:length(tv)])
-plot_trait(tv,ltb) %>% print()
-
-# -------------------------------------------------------------------------
-# tv <- c("mobile61_WSC",
-#         "WSCTE","straw_CHO87",
-#         "straw_CHO61","ear_CHO61")
-# 
-# ltb <- data.frame(namCombine=tv,
-#                   nam=c('Delta~WSC',
-#                         'WSCTE',#mobile/all61
-#                         'CHO["Straw,87"]','CHO["Straw,61"]',
-#                         'CHO["Ear,61"]'),
-#                   letters =LETTERS[1:5],
-#                   unit= c("kg/ha",
-#                           '10^-3',#kg/t
-#                           'mg/g',
-#                           'mg/g',"mg/g"))
-
-# -------------------------------------------------------------------------
-tv <- c("rachis_DM87","rachis_ratio_DM87",
-        "grain_area","grain_bulk_density",
-        "grain_width" ,"grain_length")
-
-ltb <- data.frame(namCombine=tv,
-                  nam=c('rachis','rachis/spike',
-                        'area',#mobile/all61
-                        'density','width',
-                        'length'),
-                  letters =LETTERS[1:6],
-                  unit= c('t/ha','"%"',
-                          'mm^2',#kg/t
-                          'kg/hl',
-                          'mm',"mm"))
-
-# -------------------------------------------------------------------------
-
-tv <- c("rachis_DM87","rachis_ratio_DM87",
-        "grain_area","grain_bulk_density",
-        "grain_width" ,"grain_length")
-
-ltb <- data.frame(namCombine=tv,
-                  nam=c('rachis','rachis/spike',
-                        'area',#mobile/all61
-                        'density','width',
-                        'length'),
-                  letters =LETTERS[1:6],
-                  unit= c('t/ha','"%"',
-                          'mm^2',#kg/t
-                          'kg/hl',
-                          'mm',"mm"))
-
-# -------------------------------------------------------------------------
-tv <- c("GCD61","S71_77",
-        "S61_71" ,"S61_87",
-        "gSPAD_61","gLI_int")
-
-ltb <- data.frame(namCombine=tv,
-                  nam=c('GCD','grain~filling',
-                        'flowering~time',#mobile/all61
-                        'post-anthesis~time','SPAD~61',
-                        'LI~integral'),
-                  letters =LETTERS[1:6],
-                  unit= c('d*degree*C','d*degree*C',
-                          'd*degree*C',#kg/t
-                          'd*degree*C',
-                          'a','a'))
-
-
-
-# -------------------------------------------------------------------------
-
+# ------------------------------------------------------------------------
 tv <- c("plot_yield","plot_grain_number",
         "plot_tkw","plot_grain_per_spike",
         "spike_number_87","grain_width" ,"grain_length")
@@ -310,12 +157,10 @@ ltb <- data.frame(namCombine=tv,
                   unit= c("t~ha^-1",'x10^6~ha^-1',
                           'g/1000~grain','x10^6~ha^-1~spike^-1',
                           'x10^6~ha^-1','mm',"mm"))
-# -------------------------------------------------------------------------
-# get means for the non-significant traits 
 
 p <- plot_trait(tv,ltb)
-p
-tiff(filename=paste0("paper_fig/FigS5.tiff"),
+
+tiff(filename=paste0("result/Fig.S5.tiff"),
      units="cm",
      width=21,
      height=14,
@@ -324,28 +169,34 @@ tiff(filename=paste0("paper_fig/FigS5.tiff"),
      res=600)# dpi
 p %>% print()
 dev.off()
+# quality -------------------------------------------------------------------------
 
-# try to control the label text 
-# color.vec <- merge_dat%>% 
-#   dplyr::filter(namCombine%in%ltb$namCombine) %>%
-#   mutate({{typ}}:=factor(.data[[typ]],rank_level))%>% 
-#   left_join(label_table) %>%
-#   group_by(letters,var,Year) %>%
-#   summarise(m=mean(Trait)) %>% 
-#   ungroup() %>% 
-#   arrange(letters,var,desc(m)) %>% 
-#   .$Year %>% as.character() %>% 
-#   col_pal[.]
-# 
-# Table2<- merge_dat %>% 
-#   # subset by condition 
-#   dplyr::filter(!!condi) %>% 
-#   # out put ready format
-#   table_fun2(.,typ)%>% 
-#   mutate({{typ}}:=factor(.data[[typ]],rank_level)) %>% 
-#   select(-groups,-combi) %>%
-#   tidyr::pivot_longer(-c(var,DFG_year),
-#                       names_to = "namCombine",
-#                       values_to = "groups") %>%
-#   na.omit() %>%
-#   tidyr::pivot_wider(names_from = "namCombine",values_from ="groups" )
+tv <- c( 
+  "S", "GCD61",
+  "S31_41",
+  "S61_71","S71_77", "S61_87",
+  "TT61"
+)
+
+
+ltb <- data.frame(namCombine=tv,
+                  nam=c('GCD.S','GCD',
+                        'TT[31-41]',
+                        'TT[61-71]',
+                        'TT[71-77]','TT[61-87]',
+                        'TT61'),
+                  unit=c("",'degree*C*d','degree*C*d', 'degree*C*d', 
+                         'degree*C*d', 'degree*C*d', 'degree*C*d'#kg/t
+                  ),
+  
+                  letters =LETTERS[1:length(tv)])
+
+tiff(filename=paste0("result/Fig.S6.tiff"),
+     units="cm",
+     width=21,
+     height=14,
+     compression = "lzw",
+     pointsize=3,
+     res=600)# dpi
+plot_trait(tv,ltb) %>% print()
+dev.off()
