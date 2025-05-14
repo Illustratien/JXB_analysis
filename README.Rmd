@@ -37,7 +37,7 @@ options(dplyr.summarise.inform = FALSE)
 ```{r,echo=F,fig.width=10, fig.height=10,warning=F}
 dirs <- list.dirs(path = ".", full.names = TRUE, recursive = TRUE) 
 
-r.target <- paste(c(".git",".Rproj.user","talk",".quarto","gfm","docs"),
+r.target <- paste(c(".git",".Rproj.user","result",'plot','table','README_files',".quarto","gfm","docs"),
                   collapse='|')
 dirs <- dirs[!grepl(r.target,dirs)]
 
@@ -52,13 +52,15 @@ dirst <- gsub("\\.\\/","Root/",dirs)
 x <- lapply(strsplit(dirst, "/"), 
             function(z) as.data.frame(t(z))) %>% 
   plyr::rbind.fill(.) %>%
-  filter(!is.na(V3)) %>% 
+  filter(!is.na(V2)) %>% 
   # group_by(V1,V2,V3) %>%
   # reframe(V4 = case_when(n() > 5&(!V3%in%c("pre-processing","fun"))~sprintf("%s files",n()-1),T~V4)) %>% 
   group_by(V1,V2) %>%
-  mutate(V3 = case_when(n() > 5&(V2%in%c("data","src"))&(!V3=='fun')~sprintf("%s files",n()-1),T~V3))%>%
+  mutate(V3 = case_when(n() > 5&(V2=='data')~sprintf("%s files",n()-1),
+                        n() > 5&(V2=='src')&(!V3=='fun')~sprintf("%s files",n()-8),
+                        T~V3))%>%
   group_by(V1,V2,V3) %>%
-  mutate(V2=factor(V2,levels=c("data","src","result","plot"))) %>% 
+  mutate(V2=factor(V2,levels=c("data","src"))) %>% 
   arrange(desc(V2)) %>% suppressWarnings()
 
 x$pathString <- apply(x, 1, function(x) paste(trimws(na.omit(x)), collapse="/"))
