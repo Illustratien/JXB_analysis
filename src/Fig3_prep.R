@@ -16,6 +16,8 @@ merge_dat <- read.csv("data/merge_profile_rep.csv") %>%
   bind_rows(.,read.csv("data/merge_profile_rep.csv")) %>% 
   mutate(rep=factor(rep))
 
+# merge_dat %>%
+#   filter(!grepl("(L(A)?I$|mean$|max$|GBD|dd|5(5|9)|biomasscut)",namCombine,perl=T)) %>% df_ue(.,"namCombine")
 data_list <- merge_dat %>%
   filter(!grepl("(L(A)?I$|m(ean|ax)|GBD|GCD87|RUE|dd|5(5|9)|biomasscut)",namCombine)) %>% # the number is not distributed evenly for each date
   group_by(DFG_year,namCombine) %>%
@@ -79,10 +81,9 @@ resdf <- res %>%
   .[!map_lgl(.,~{is.null(.x)})] %>% 
   map_dfr(.,~{.x})
 
-write.csv(resdf,"result/HSDtable.csv",row.names = F)
+write.csv(resdf,"result/table/HSDtable.csv",row.names = F)
 
 # -------------------------------------------------------------------------
-
 rm(list=ls())
 pacman::p_load(dplyr,purrr,ggplot2,magrittr,foreach,toolPhD)
 options(dplyr.summarise.inform = FALSE)
@@ -156,4 +157,4 @@ resdf <- res %>%
   map_dfr(.,~{.x}) %>%
   tidyr::separate(trait,c("trait","BBCH"),sep="-")
 
-write.csv(resdf,"result/HSDtable_phenology_gcd.csv",row.names = F)
+write.csv(resdf,"result/table/HSDtable_phenology_gcd.csv",row.names = F)

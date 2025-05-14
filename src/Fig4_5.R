@@ -23,6 +23,7 @@ col.clr <- c("#003f5c","#58508d","#8a508f","#bc5090", "#de5a79", "#ff6361","#ff8
 names(col.clr) <- Geno
 shape_geno <- c(0,1,2,5,6,8,12,13)
 names(shape_geno) <- Geno
+
 g_rank <- b %>% 
   dplyr::filter(namCombine=="plot_yield") %>% 
   genotypic_superiority_measure(.,'Trait',genotype = 'var',
@@ -39,8 +40,6 @@ glance.lm <- function(x, ...) {
   result <- sx$coefficients %>%
     tibble::as_tibble(rownames = "term") %>%
     dplyr::rename(slope = Estimate,
-                  # std.error = `Std. Error`,
-                  # statistic = `t value`,
                   p.value = `Pr(>|t|)`) %>% 
     cbind(.,
           with(sx,
@@ -54,7 +53,7 @@ sc_ppp <- function(xv,yv,xlabt=NULL,lgd=NULL,...){
   k <- b %>% 
     filter(namCombine%in%c(xv,yv),
            !DFG_year=="DFG2019"
-           ) %>% 
+    ) %>% 
     group_by(var,namCombine) %>% 
     summarise(Trait=mean(Trait,na.rm=T),.groups = "drop") %>% 
     # change the nitrogen from t/ha kg/ha
@@ -77,7 +76,7 @@ sc_ppp <- function(xv,yv,xlabt=NULL,lgd=NULL,...){
     arrange(desc(sign),desc(r.squared)) %>% 
     left_join(look.up) %>% ungroup() %>% 
     mutate(n=1:n(),
-           fn=paste("(",LETTERS[n],")~",fn) %>% 
+           fn=paste(LETTERS[n],"~",fn) %>% 
              map_chr(.,~paste0('bold(',.,')')))
   
   p1 <-
@@ -145,29 +144,58 @@ sc_ppp <- function(xv,yv,xlabt=NULL,lgd=NULL,...){
   print(p1)
 }
 
+yv<- c("mobile61_WSC",  # negative #21
+       "mobile61_N", # negative, w21
+       "mobile61_DM",# negative
+       "kernel_total_N87", # positive , w21
+       "straw_DM87", # positive
+       "straw_CHO87", # positive    
+       "post61_DM", # positive
+       "plot_yield"
+)
+
+look.up <- data.frame(
+  trait=c("mobile61_WSC",  # negative #21
+          "mobile61_N", # negative, w21
+          "mobile61_DM",# negative
+          "kernel_total_N87", # positive , w21
+          "straw_DM87", # positive
+          "straw_CHO87", # positive    
+          "post61_DM", # positive
+          "plot_yield"
+  ),
+  fn= c(
+    'Delta*WSC["61-87, straw"]~"("*t/ha*")"',
+    'Delta*N["61-87, straw"]~"("*kg/ha*")"',
+    'Delta*DM["61-87, straw"]~"("*t/ha*")"',
+    'N["87, grain"]~"("*kg/ha*")"',
+    'DM["87, straw"]~"("*t/ha*")"',
+    'WSC["87, straw"]~"("*mg/g*")"',
+    'Delta*DM["87-61, all"]~"("*t/ha*")"',
+    'GY~"("*t/ha*")"'
+  ) %>% map_chr(.,~{paste0('bold(',.x,')')})
+  
+)
+
 # -------------------------------------------------------------------------
 look.up <- data.frame(
   trait=c("mobile61_WSC",  # negative #21
           "mobile61_N",
-          # "straw_Nitrogen61",
-          # "straw_CHO61",
           "kernel_Nitrogen87",
           "straw_CHO87", # negative, w21
           "GCD61",
-          # "S",
           "S61_87"),
   
-  fn=c('Delta*WSC["61-87,straw"]~"("*t/ha*")"',
-       'Delta*N["61-87,straw"]~"("*kg/ha*")"',
-       # 'Delta*DM["61-87, straw"]~"("*t/ha*")"',
-       '"["*N*"]"["87,grain"]~"("*mg/g*")"',
-       '"["*WSC*"]"["87,straw"]~"("*mg/g*")"',
-       'GCD~"("*d*degree*C*")"',
-       'TT["61-87"]~"("*d*degree*C*")"')
+  fn=c('Delta*WSC["61-87,straw"]~"("*t~ha^-1*")"',
+       'Delta*N["61-87,straw"]~"("*kg~ha^-1*")"',
+       '"["*N*"]"["87,grain"]~"("*mg~g^-1*")"',
+       '"["*WSC*"]"["87,straw"]~"("*mg~g^-1*")"',
+       'GCD~"("*degree*C*d*")"',
+       'TT["61-87"]~"("*degree*C*d*")"')
   
 ) 
 
-tiff(filename='result/Fig.4.tiff',
+tiff(filename='result/plot/Fig4.tiff',
      units="cm",
      width=21,#21.6
      height=15,#16.1
@@ -176,25 +204,22 @@ tiff(filename='result/Fig.4.tiff',
      res=500,# dpi)
      family="Arial")
 sc_ppp("post61_DM",look.up$trait,
-       'Delta*DM["87-61,all"]~"("*t/ha*")"',lgd="right")
+       'Delta*DM["87-61,all"]~"("*t~ha^-1*")"',lgd="right") %>% print()
 dev.off()
 
 # -------------------------------------------------------------------------
 hex <- scales::hue_pal()(3) 
-
 names(hex) <-c("2019","2020","2021")
 ltype <- c("solid","solid","dashed")
 names(ltype) <- c("2019","2020","2021")
 glk <- data.frame(var=g_rank$var) %>% 
   mutate(n=1:n(),
-         genotype=paste0("(",LETTERS[n],") ",var)
+         genotype=paste0(LETTERS[n]," ",var)
   )
 
 pp<- function(yv,xv){
   # individual year
-  k <-  b %>% filter(namCombine%in%c(xv,yv,"plot_yield")
-                     # !DFG_year=="DFG2019"
-                     ) %>% 
+  k <-  b %>% filter(namCombine%in%c(xv,yv,"plot_yield")) %>% 
     tidyr::pivot_wider(names_from="namCombine",values_from="Trait") %>% 
     tidyr::pivot_longer(-c(xv,"var","DFG_year","timeid","appl","nitrogen"),
                         values_to = "Trait",names_to = "trait")%>% 
@@ -227,7 +252,11 @@ pp<- function(yv,xv){
   p <-  st %>% 
     ggplot(aes(.data[[xv]],Trait))+
     toolPhD::theme_phd_facet(legend.position="bottom")+
-    geom_point(aes(color=year),shape=1,size=2)+
+    geom_point(aes(
+      color=year,
+    ),shape=1,
+    size=2)+
+    
     ggpmisc::stat_poly_line(
       data=st,
       formula = y ~ x,
@@ -249,13 +278,13 @@ pp<- function(yv,xv){
       
       genotype~.,ncol=4) +
     xlab(parse(text='bold(GCD~"("*degree*C*d*")")'))+
-    ylab(parse(text='bold("["*WSC*"]"["87, straw"]~"("*mg/g*")")'))+
+    ylab(parse(text='bold("["*WSC*"]"["87, straw"]~"("*mg~g^-1*")")'))+
     theme(strip.placement = "right")
   print(p)
 }
 
 # -------------------------------------------------------------------------
-tiff(filename='result/Fig.5.tiff',
+tiff(filename='result/plot/Fig5.tiff',
      units="cm",
      width=18,#21.6
      height=12,#16.1
@@ -263,5 +292,6 @@ tiff(filename='result/Fig.5.tiff',
      pointsize=3,
      res=500,# dpi)
      family="Arial")
-pp("straw_CHO87","GCD61")
+pp("straw_CHO87","GCD61") %>% print()
 dev.off()
+

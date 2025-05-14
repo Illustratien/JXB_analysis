@@ -57,14 +57,14 @@ res.l <- tidyr::gather(climate,"climate","value", DailyMean_Temperature:DailySum
          # it will preserve the existing order of levels while changing the values.
          Climate=recode(climate,
                         'DailyMean_Temperature'= 'Daily~mean~temperature~(degree*C)',
-                        "DailySum_Radiation"="Daily~irradiation~(W/m^{2})",
+                        "DailySum_Radiation"="Daily~irradiation~(W~m^-2)",
                         "DailySum_Percipitation"="Daily~precipitation~(mm)",
                         "Acc_Percipitation"="Accumulated~precipitation~(mm)",
-                        "Acc_Radiation"="Accumulated~Irradiation~(kW/m^{2})",
-                        "Acc_Temperature"="Accumulated~thermal~sum~(day~degree*C)"))
+                        "Acc_Radiation"="Accumulated~Irradiation~(kW~m^{-2})",
+                        "Acc_Temperature"="Accumulated~thermal~sum~(degree*C*d)"))
 #data
 daily_dat <- res.l%>% filter(timeid==sowingExample,!grepl("Acc",climate)) %>% 
-  dplyr::select(-c(DayTime:timeid,sow,Climate)) %>% 
+  dplyr::select(-c(DayTime:timeid,Climate)) %>% 
   tidyr::pivot_wider(.,names_from = 'climate',values_from = 'value')
 #label df
 label_day <- reproductive_stage_df%>% 
@@ -128,7 +128,7 @@ daily_plist <- purrr::map(1:3,~{
   }
 })
 
-tiff(filename='paper_fig/FigS3.tiff',
+tiff(filename='result/plot/FigS3.tiff',
      units="cm",
      width=17.4,
      height=15,
@@ -136,28 +136,5 @@ tiff(filename='paper_fig/FigS3.tiff',
      pointsize=12,
      res=400)# dpi)
 cowplot::plot_grid(plotlist =daily_plist,nrow = 3,
-                   rel_heights = c(.7,.7,1) )
+                   rel_heights = c(.7,.7,1) ) %>% print()
 dev.off()
-
-# -------------------------------------------------------------------------
-
-
-daily_dat %>% group_by(Year,sowingD) %>% 
-  dplyr::filter(Year>2019) %>% 
-  summarise(across(starts_with("Daily"),
-                   ~sum(.x,na.rm = T))) %>% 
-  dplyr::select(-Daily_TQ) %>% 
-  tidyr::pivot_longer(starts_with("Daily"),values_to = "cli",names_to = "Cli") %>% 
-  mutate(
-    Cli=recode(Cli,
-               'DailyMean_Temperature'= "Accumulated~thermal~sum~(day~degree*C)",
-               "DailySum_Radiation"="Accumulated~irradiation~(W/m^{2})",
-               "DailySum_Percipitation"="Accumulated~precipitation~(mm)")) %>% 
-  ggplot()+
-  scale_y_continuous(
-    labels = scales::label_number(scale_cut = scales::cut_short_scale()))+
-  geom_bar(aes(y=cli,x=Year,fill=Year),position = "dodge",stat="identity")+
-  facet_wrap(~Cli,scales = "free_y",labeller = label_parsed)+
-  toolPhD::theme_phd_facet()+
-  theme(axis.title.y=element_blank(),legend.position = "none")
-

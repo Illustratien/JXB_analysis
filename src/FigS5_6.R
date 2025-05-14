@@ -5,10 +5,10 @@ pacman::p_load(dplyr,purrr,ggplot2,stickylabeller,ggh4x,
 options(dplyr.summarise.inform = FALSE)
 # -------------------------------------------------------------------------
 
-hsd_tbl <- read.csv("result/HSDtable.csv") %>% 
+hsd_tbl <- read.csv("result/table/HSDtable.csv") %>% 
   dplyr::select(groups,trait,treatment,Year,combi) %>% 
   rename(trait_name=trait,DFG_year=Year)
-resdf <- read.csv("result/HSDtable_phenology_gcd.csv") %>% 
+resdf <- read.csv("result/table/HSDtable_phenology_gcd.csv") %>% 
   dplyr::select(groups,trait,treatment,Year,combi,BBCH) %>% 
   mutate(
     BBCH=gsub("\\\n","-",BBCH),
@@ -133,6 +133,7 @@ plot_trait<- function(tv,ltb){
     scale_color_manual(values = col_pal)+
     theme( 
       axis.text.x = element_text(size=10,angle=90),
+      # ggtext element_markdown(), ... failed
       axis.text.y = element_text(size=10,# colour =color.vec
       ),
       axis.title.x=element_blank(),
@@ -146,7 +147,7 @@ plot_trait<- function(tv,ltb){
     coord_flip()
 }
 
-# ------------------------------------------------------------------------
+# -------------------------------------------------------------------------
 tv <- c("plot_yield","plot_grain_number",
         "plot_tkw","plot_grain_per_spike",
         "spike_number_87","grain_width" ,"grain_length")
@@ -155,14 +156,15 @@ ltb <- data.frame(namCombine=tv,
                   nam=c('GY','GN','TGW','GpS','SN','GW',"GL"),
                   letters =LETTERS[1:7],
                   unit= c("t~ha^-1",'x10^6~ha^-1',
-                          'g/1000~grain','x10^6~ha^-1~spike^-1',
+                          'g~1000~grain^-1','"x"*10^6~ha^-1*spike^-1',
                           'x10^6~ha^-1','mm',"mm"))
-
+# -------------------------------------------------------------------------
+# get means for the non-significant traits 
 p <- plot_trait(tv,ltb)
-
-tiff(filename=paste0("result/Fig.S5.tiff"),
+# p
+tiff(filename=paste0("result/plot/FigS5.tiff"),
      units="cm",
-     width=21,
+     width=24,
      height=14,
      compression = "lzw",
      pointsize=3,
@@ -171,13 +173,12 @@ p %>% print()
 dev.off()
 # quality -------------------------------------------------------------------------
 
+# toolPhD::df_ue(merge_dat,"namCombine","LAI")
 tv <- c( 
   "S", "GCD61",
   "S31_41",
   "S61_71","S71_77", "S61_87",
-  "TT61"
-)
-
+  "TT61")
 
 ltb <- data.frame(namCombine=tv,
                   nam=c('GCD.S','GCD',
@@ -186,17 +187,16 @@ ltb <- data.frame(namCombine=tv,
                         'TT[71-77]','TT[61-87]',
                         'TT61'),
                   unit=c("",'degree*C*d','degree*C*d', 'degree*C*d', 
-                         'degree*C*d', 'degree*C*d', 'degree*C*d'#kg/t
-                  ),
-  
+                         'degree*C*d', 'degree*C*d', 'degree*C*d'),
                   letters =LETTERS[1:length(tv)])
 
-tiff(filename=paste0("result/Fig.S6.tiff"),
+tiff(filename=paste0("result/plot/FigS6.tiff"),
      units="cm",
-     width=21,
+     width=24,
      height=14,
      compression = "lzw",
      pointsize=3,
      res=600)# dpi
 plot_trait(tv,ltb) %>% print()
 dev.off()
+

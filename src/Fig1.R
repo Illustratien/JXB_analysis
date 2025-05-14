@@ -1,7 +1,7 @@
 # barplot -----------------------------------------------------------------
 rm(list=ls())
 pacman::p_load(dplyr,ggplot2,toolPhD)
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# function ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 centroid_dot_pattern <- function(params, boundary_df, aspect_ratio, legend) {
   # https://coolbutuseless.github.io/package/ggpattern/articles/developing-patterns-2.html
   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -29,39 +29,35 @@ centroid_dot_pattern <- function(params, boundary_df, aspect_ratio, legend) {
     )
   )
 }
-smtble<- function(df,gf){
-  list(ecovalence(df,"Trait",gf,c(setdiff(c('g','var'),gf),"DFG_year"),unit.correct = T),
-       genotypic_superiority_measure(df,"Trait",gf,c(setdiff(c('g','var'),gf),"DFG_year"),
-                                     unit.correct = T)
-  ) %>% Reduce('merge',.)
-}
 options(ggpattern_geometry_funcs = list(centroid = centroid_dot_pattern))
 
-
-
-
-plot_yield <- read.csv('data/merge_profile.csv') %>% 
-  filter(namCombine%in%c("plot_yield"),!DFG_year=="DFG2019")
+# -------------------------------------------------------------------------
+smtble<- function(df,gf){
+  
+  list(ecovalence(df,"Trait",gf,c(setdiff(c('g','var'),gf),"DFG_year"),unit.correct = T),
+       # environmental_variance(df,"Trait",gf,unit.correct = T),
+       genotypic_superiority_measure(df,"Trait",gf,c(setdiff(c('g','var'),gf),"DFG_year"),unit.correct = T)
+  ) %>% Reduce('merge',.)
+}
+datm <- read.csv('data/merge_profile.csv') %>% 
+  filter(namCombine%in%c("plot_yield"),
+         !DFG_year=="DFG2019")
 
 stable_merg <- bind_rows(
-  # management 
-  smtble(plot_yield,'g') %>% 
+  smtble(datm,'g') %>%
     tidyr::pivot_longer(ecovalence:genotypic.superiority.measure,
-                        values_to = 'SI',names_to = 'SI_name') %>% 
-    mutate(trait_name="plot_yield",
-           Typ="management"),
-  # genotype 
-  smtble(plot_yield,'var') %>% 
+                        values_to = 'SI',names_to = 'SI_name') %>%
+    mutate(trait_name=datm$namCombine[1],Typ='management'),
+  smtble(datm,'var') %>%
     tidyr::pivot_longer(ecovalence:genotypic.superiority.measure,
-                        values_to = 'SI',names_to = 'SI_name') %>% 
-    mutate(
-      trait_name="plot_yield",
-      Typ="genotype")
-) %>% rename(mean=Mean.Trait)
+                        values_to = 'SI',names_to = 'SI_name') %>%
+    mutate(trait_name=datm$namCombine[1],Typ='genotype'))%>%
+  rename(mean=Mean.Trait)
+
+# -------------------------------------------------------------------------
 
 Geno <- c("Capone","Pionier","Patras","Apertus","Torrild","Alves","Potenzial","Esket")
 col.clr <- c("#003f5c","#58508d","#8a508f","#bc5090", "#de5a79", "#ff6361","#ff8531", "#ffa600")
-
 names(col.clr) <- Geno
 
 col.nitro <- c("#B3AD00","#1F9600")
@@ -69,17 +65,14 @@ names(col.nitro) <- c("176","220")
 shape_geno <- c(0,1,2,5,6,8,12,13)
 names(shape_geno) <- Geno
 
-unit.pi <-quote('t/ha')
-
 sivec <- stable_merg$SI_name %>% unique()
 
-# -------------------------------------------------------------------------
 for (si in sivec){
   stable_tabley <- dplyr::filter(stable_merg,trait_name=="plot_yield",SI_name==si)
   
   si.txt <- ifelse(si=="ecovalence","W","P")
-  pg.txt <-bquote(bolditalic(.(si.txt))[bold('g,GY')]~bold('('*.(unit.pi)*')'))
-  pm.txt <-bquote(bolditalic(.(si.txt))[bold('m,GY')]~bold('('*.(unit.pi)*')'))
+  pg.txt <-bquote(bolditalic(.(si.txt))[bold('g,GY')]~bold('('*t~ha^-1*')'))
+  pm.txt <-bquote(bolditalic(.(si.txt))[bold('m,GY')]~bold('('*t~ha^-1*')'))
   
   manage_st <- stable_tabley%>%
     dplyr::filter(Typ=="management")%>%
@@ -119,6 +112,7 @@ for (si in sivec){
     xlab("Genotype")+
     ylab(pg.txt)+
     theme_phd_facet(ax.txt.siz = 6,ax.tit.siz = 8,t=20)+
+    #b=40,l=20,t=38,ax.txt.siz = 20,ax.tit.siz = 25
     geom_text(aes(y=SI_y),size=3)+
     theme(axis.title.x = element_text(vjust=-12),
           axis.title.x.bottom = element_blank())
@@ -128,6 +122,7 @@ for (si in sivec){
                           color=nitrogen)) +
     geom_bar(stat="identity",aes(fill=nitrogen),alpha=.5)+
     theme_phd_facet(ax.txt.siz = 6,ax.tit.siz = 8,t=20)+
+    #l=20,t=38,ax.txt.siz = 18,ax.tit.siz = 25
     geom_point(aes(y=-.12,shape=treatment),size=3,stroke=1.5)+
     ylab(pm.txt)+
     scale_shape_manual(values = 
@@ -140,7 +135,7 @@ for (si in sivec){
       axis.title.x=element_blank(),
       legend.position = "none")
   
-  legend_b <- cowplot::get_plot_component(
+  legend_b <- cowplot::get_legend(
     ggplot(manage_st,
            aes(x=Genotype,y=SI,
                color=nitrogen,
@@ -154,15 +149,14 @@ for (si in sivec){
       theme(plot.margin =margin(1,1,1,5,"cm"),
             legend.spacing.x = unit(.5, 'cm'),
             legend.position = "bottom",
-            legend.title =element_text(hjust=-30),
+            legend.title.align=-30,
             legend.key.size = unit(.8, 'cm'))+
       guides(color=guide_legend(nrow=1, byrow=TRUE,
                                 title.position="top", 
                                 title.hjust = 0.5),
              shape=guide_legend(nrow=1, byrow=TRUE,
                                 title.position="top", 
-                                title.hjust = 0.5)),
-    'guide-box-top', return_all = TRUE)
+                                title.hjust = 0.5)))
   
   prow2 <-    cowplot::plot_grid(
     cowplot::plot_grid(
@@ -196,7 +190,7 @@ legend_a <- cowplot::get_plot_component(
     theme(plot.margin =margin(1,1,1,5,"cm"),
           legend.spacing.x = unit(.5, 'cm'),
           legend.position = "bottom",
-          legend.title =element_text(hjust=-30),
+          legend.title =element_text(-30),
           legend.key.size = unit(.8, 'cm'))+
     scale_color_manual(values = col.clr) ,'guide-box-bottom',return_all=T)
 
@@ -214,7 +208,7 @@ legend_b <- cowplot::get_plot_component(
     theme(plot.margin =margin(1,1,1,5,"cm"),
           legend.spacing.x = unit(.5, 'cm'),
           legend.position = "bottom",
-          legend.title =element_text(hjust=-30),
+          legend.title =element_text(-30),
           legend.key.size = unit(.8, 'cm'))+
     scale_color_manual(values=col.nitro)+
     guides(color=guide_legend(nrow=1, byrow=TRUE,
@@ -233,8 +227,8 @@ plist <- purrr::map(c("genotype","management"),
                         tidyr::pivot_wider(values_from = SI,names_from = SI_name)
                       
                       si.txt <- ifelse(typ=="management","m","g")
-                      x.txt <-bquote(bolditalic("W")[bold(.(si.txt)*',GY')]~bold('('*.(unit.pi)*')'))
-                      y.txt <-bquote(bolditalic("P")[bold(.(si.txt)*',GY')]~bold('('*.(unit.pi)*')'))
+                      x.txt <-bquote(bolditalic("W")[bold(.(si.txt)*',GY')]~bold('('*t~ha^-1*')'))
+                      y.txt <-bquote(bolditalic("P")[bold(.(si.txt)*',GY')]~bold('('*t~ha^-1*')'))
                       if(typ=="management"){
                         
                         p0 <- subdata %>%
@@ -273,6 +267,8 @@ plist <- purrr::map(c("genotype","management"),
                       }
                       
                       pl <- p0 +
+                        
+                        
                         geom_point(size=3,stroke=1.5,show.legend = F)+
                         scale_shape_manual(values = shp)+
                         xlab(x.txt)+
@@ -283,7 +279,6 @@ plist <- purrr::map(c("genotype","management"),
                       return(pl)
                     })
 
-
 prow2 <-    cowplot::plot_grid(
   cowplot::plot_grid(
     plotlist = plist,align = 'hv',
@@ -293,7 +288,7 @@ prow2 <-    cowplot::plot_grid(
   legend_a,legend_b,
   rel_heights = c(.9,.1,.1),ncol=1)
 
-tiff(filename=paste0("result/Fig.1.tiff"),
+tiff(filename=paste0("result/plot/Fig1.tiff"),
      units="cm",
      width=17.4,
      height=12.5,

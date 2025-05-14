@@ -11,7 +11,7 @@ grain number per area,grain_number,*10^{6}/ha,10^6/ha,GN
 grain per spike per area,grain_per_spike,*10^{6}/ha,10^6/ha,GpS
 spike number per area,spike_number,*10^{6}/ha,10^6/ha,SN
 light interception,LI,%,, 
-green canopy duration,GCD, (degCd),degCd,GCD
+green canopy duration,GCD, (degCd),,GCD
 SPAD,SPAD, ,, 
 leaf area index,LAI, ,,
 grain area,grain_area,mm^{2},mm^2,

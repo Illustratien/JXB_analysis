@@ -1,7 +1,6 @@
 rm(list=ls())
 options(dplyr.summarise.inform = FALSE)
 pacman::p_load(toolStability,dplyr,toolPhD,foreach,ggplot2,cowplot,purrr)
-
 hex <- c("#f6ab49","#97383c","#4b87a1")
 
 ldf <- data.frame(
@@ -10,11 +9,16 @@ ldf <- data.frame(
        'Delta*DM["61-87,straw"]',
        'Delta*DM["87-61,all"]'))
 names(hex) <- ldf$fn
-
 # -------------------------------------------------------------------------
 datm <- read.csv('data/merge_profile.csv')%>%
   filter(!DFG_year=='DFG2019')
 
+hsd_tbl <- read.csv("result/table/HSDtable.csv") %>% 
+  dplyr::select(groups,trait,treatment,Year,combi) %>% 
+  rename(namCombine=trait,DFG_year=Year,var=treatment) %>% 
+  filter(namCombine%in%c('post61_DM_rel','mobile61_DM_rel',"ear61_DM_rel"),
+         combi=="var") %>%
+  dplyr::select(-combi)
 g_rank <- datm %>% 
   dplyr::filter(trait=='yield',part=='plot') %>% 
   genotypic_superiority_measure(.,'Trait',genotype = 'var',
@@ -25,7 +29,27 @@ g_rank <- datm %>%
   arrange(genotypic.superiority.measure) %>% 
   rename('pg_rank'='genotypic.superiority.measure','var'='Genotype')
 
-hsd_tbl <- read.csv("result/HSDtable.csv") %>% 
+
+datm %>% 
+  dplyr::filter(namCombine%in%c('plot_yield','post61_DM_rel')) %>% 
+  group_by(namCombine) %>% 
+  group_split() %>% 
+  purrr::map_dfr(.,~{
+    genotypic_superiority_measure(.x,'Trait',genotype = 'var',
+                                  environment = c('appl','DFG_year',
+                                                  'timeid','nitrogen'),
+                                  unit.correct = T) %>% 
+      mutate(trait=.x$namCombine[1])
+  }) %>% 
+  dplyr::select(-Mean.Trait)  %>%  
+  arrange(genotypic.superiority.measure) %>% 
+  rename('pg_rank'='genotypic.superiority.measure','var'='Genotype') %>% 
+  tidyr::pivot_wider(names_from = trait,values_from = pg_rank) %>%
+  dplyr::select(-var) %>% cor()
+
+# -------------------------------------------------------------------------
+
+hsd_tbl2 <- read.csv("result/table/HSDtable.csv") %>% 
   dplyr::select(groups,trait,treatment,Year,combi) %>% 
   rename(namCombine=trait,DFG_year=Year,var=treatment) %>% 
   filter(namCombine%in%c('post61_DM','mobile61_DM',"ear_DM61"),
@@ -34,11 +58,11 @@ hsd_tbl <- read.csv("result/HSDtable.csv") %>%
 
 # grain source filling -------------------------------------------------------------------------
 
-filling_strategy <- read.csv('data/merge_profile.csv')%>% 
+filling_strategy2 <- read.csv('data/merge_profile.csv')%>% 
   filter(namCombine%in%c('post61_DM','mobile61_DM',"ear_DM61")) %>% 
   group_by(var,DFG_year,namCombine) %>% 
   summarise(Tra=mean(Trait,na.rm=T),Trasd=sd(Trait,na.rm=T)) %>%
-  left_join(.,hsd_tbl) %>% 
+  left_join(.,hsd_tbl2) %>% 
   rename(Genotype=var) %>% 
   merge(.,ldf) %>% 
   mutate(namCombine=factor(fn,levels=ldf$fn %>% rev()),
@@ -47,25 +71,26 @@ filling_strategy <- read.csv('data/merge_profile.csv')%>%
                            rev() ),
          l=case_when(is.na(groups)~paste0('bold(',round(Tra,1),')'),
                      T~ paste0('bold(',round(Tra,1),'^',groups,')')),
-         Y=case_when(DFG_year=="DFG2019"~"(A) 2019",
-                     DFG_year=="DFG2020"~"(B) 2020",
-                     T~"(C) 2021"))
-
-p2 <- ggplot(filling_strategy,
+         Y=case_when(DFG_year=="DFG2019"~"A 2019",
+                     DFG_year=="DFG2020"~"B 2020",
+                     T~"C 2021"))
+filling_strategy2 %>% 
+  group_by(namCombine) %>% 
+  summarise(Tra=mean(Tra,na.rm=T))
+p2 <- ggplot(filling_strategy2,
              aes(y=Tra,fill=namCombine, x=Genotype,label=l)) + 
   geom_bar(
     stat="identity"
   )+
   theme_phd_facet(b=3,t=3,
                   lgd.tit.siz = 10,lgd.txt.siz = 10)+ # spacing of x and axis)+
-  guides(fill=guide_legend(title="grain filling source"))+
+  guides(fill=guide_legend(title="Grain filling source"))+
   facet_grid(~Y)+
   scale_fill_manual(values=hex,
- 
+                    # breaks=ldf$fn,
                     labels = scales::parse_format()
   )+
-  ylab(parse(text='bold(Contribution~to~DM["87,spike"]~(t/ha))'))+
-
+  ylab(parse(text='bold(Contribution~to~DM["87,spike"]~(t~ha^-1))'))+
   geom_text(
     size = 3.6, parse=T,position = position_stack(vjust = 0.5),
     color="white",fontface="bold")+
@@ -74,16 +99,17 @@ p2 <- ggplot(filling_strategy,
     legend.key.height = unit(1, "cm"),
     axis.title.x = element_text(margin = margin(b=8),vjust=-5))+
   coord_flip()+
-  xlab("cultivar")
+  xlab("Genotype")
+# p2
 
 # -------------------------------------------------------------------------
 
 tr <- c('mobile_effciency_WSC','post61_DM',"plot_yield","GCD61")
 
 look.vec <- c('"[WSC]"["straw"]~frac("["*61-87*"]","["*61*"]")',
-              'Delta*DM["87-61,all"]~"("*t/ha*")"','GY~"("*t/ha*")"',
-              'GCD61~"("*d*degree*C*")"'
-) %>% map_chr(.,~{paste0('bold(',.x,')')})
+              'Delta*DM["87-61,all"]~"("*t~ha^-1*")"','GY~"("*t~ha^-1*")"',
+              'GCD61~"("*degree*C*d*")"') %>%
+  map_chr(.,~{paste0('bold(',.x,')')})
 
 v <- read.csv("data/merge_profile.csv") %>% 
   filter(namCombine%in%tr,
@@ -128,12 +154,11 @@ qp4<- function(datta,xy_vec){
       Year=factor(Year,levels=c("2019","2020","2021"))) %>%
     ggplot(aes(x=!!xvar,y=!!yvar))+
     theme_phd_facet(b=3,t=3,l=20,
-                    lgd.tit.siz = 10,lgd.txt.siz = 10)+#ax.txt.siz =6,ax.tit.siz = 6,l=0,b=2,t=1,r=1
+                    lgd.tit.siz = 10,lgd.txt.siz = 10)+
     scale_y_continuous(limits = rangedf[[tr_vec[2]]],labels = scales::label_number())+
     scale_x_continuous(limits = rangedf[[tr_vec[1]]],labels = scales::label_number())+
     ggpmisc::stat_poly_line(formula = y ~ x,
                             aes(group = Year,linetype=Year,color=Year),
-                            # color="darkgray",
                             se=F,linewidth=.5) +
     ggpmisc::stat_poly_eq(formula =  y ~x,
                           aes(
@@ -155,8 +180,7 @@ qp4<- function(datta,xy_vec){
     theme(axis.title.x = element_text(margin = margin(b=8),vjust=-2))
 }
 
-
-tiff(filename='result/Fig.3.tiff',
+tiff(filename='result/plot/Fig3.tiff',
      units="cm",
      width=21,#21.6
      height=18,#16.1
@@ -167,9 +191,9 @@ tiff(filename='result/Fig.3.tiff',
 cowplot::plot_grid(
   p2+theme(legend.position = "none"),
   cowplot::plot_grid(qp4(
-    v %>% mutate(source="(D) post-anthesis assimilates"),
+    v %>% mutate(source="D post-anthesis assimilates"),
     xy_ls[[1]]),
     get_plot_component(p2,pattern = 'guide-box-right',return_all = T) %>% 
       ggdraw(),nrow=1,align="h",rel_widths = c(1,.65)),
-  align="h",ncol=1)
+  align="h",ncol=1) %>% print()
 dev.off()
