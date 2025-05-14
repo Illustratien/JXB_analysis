@@ -1,9 +1,9 @@
 # History files
 .Rhistory
 .Rapp.history
-result/.*
+result/
 
-README_files
+README_files/
 
 # Session Data files
 .RData
