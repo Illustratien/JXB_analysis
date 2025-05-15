@@ -71,9 +71,9 @@ filling_strategy2 <- read.csv('data/merge_profile.csv')%>%
                            rev() ),
          l=case_when(is.na(groups)~paste0('bold(',round(Tra,1),')'),
                      T~ paste0('bold(',round(Tra,1),'^',groups,')')),
-         Y=case_when(DFG_year=="DFG2019"~"A 2019",
-                     DFG_year=="DFG2020"~"B 2020",
-                     T~"C 2021"))
+         Y=case_when(DFG_year=="DFG2019"~"A         2019",
+                     DFG_year=="DFG2020"~"B         2020",
+                     T~"C         2021"))
 filling_strategy2 %>% 
   group_by(namCombine) %>% 
   summarise(Tra=mean(Tra,na.rm=T))
@@ -191,7 +191,7 @@ tiff(filename='result/plot/Fig3.tiff',
 cowplot::plot_grid(
   p2+theme(legend.position = "none"),
   cowplot::plot_grid(qp4(
-    v %>% mutate(source="D post-anthesis assimilates"),
+    v %>% mutate(source="D         post-anthesis assimilates"),
     xy_ls[[1]]),
     get_plot_component(p2,pattern = 'guide-box-right',return_all = T) %>% 
       ggdraw(),nrow=1,align="h",rel_widths = c(1,.65)),

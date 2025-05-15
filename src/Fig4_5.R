@@ -76,7 +76,7 @@ sc_ppp <- function(xv,yv,xlabt=NULL,lgd=NULL,...){
     arrange(desc(sign),desc(r.squared)) %>% 
     left_join(look.up) %>% ungroup() %>% 
     mutate(n=1:n(),
-           fn=paste(LETTERS[n],"~",fn) %>% 
+           fn=paste(LETTERS[n],"~~~~~~~~~~~",fn) %>% 
              map_chr(.,~paste0('bold(',.,')')))
   
   p1 <-
@@ -214,7 +214,7 @@ ltype <- c("solid","solid","dashed")
 names(ltype) <- c("2019","2020","2021")
 glk <- data.frame(var=g_rank$var) %>% 
   mutate(n=1:n(),
-         genotype=paste0(LETTERS[n]," ",var)
+         genotype=paste0(LETTERS[n],"         ",var)
   )
 
 pp<- function(yv,xv){
